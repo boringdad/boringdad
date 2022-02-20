@@ -25,6 +25,11 @@ highInt =
     7
 
 
+lowInt : Int
+lowInt =
+    4
+
+
 nbrExercises : Int
 nbrExercises =
     7
@@ -108,7 +113,7 @@ nextMultiplication =
         initialGuess =
             Guess [ "" ]
     in
-    Random.generate (NewExercise initialGuess) <| Random.map2 mkExer (Random.int 0 highInt) (Random.int 0 highInt)
+    Random.generate (NewExercise initialGuess) <| Random.map2 mkExer (Random.int lowInt highInt) (Random.int lowInt highInt)
 
 
 nextMissingEntryInMultiplication : Cmd Msg
@@ -120,7 +125,7 @@ nextMissingEntryInMultiplication =
         initialGuess =
             Guess [ "" ]
     in
-    Random.generate (NewExercise initialGuess) <| Random.map2 mkExer (Random.int 0 highInt) (Random.int 0 highInt)
+    Random.generate (NewExercise initialGuess) <| Random.map2 mkExer (Random.int lowInt highInt) (Random.int lowInt highInt)
 
 
 nextMissingEntriesInTable : Cmd Msg
@@ -137,7 +142,7 @@ nextMissingEntriesInTable =
         initialGuess =
             Guess [ "", "" ]
     in
-    Random.generate (NewExercise initialGuess) <| Random.map3 mkExer (Random.int 0 highInt) (Random.int 0 10) (Random.int 0 10)
+    Random.generate (NewExercise initialGuess) <| Random.map3 mkExer (Random.int lowInt highInt) (Random.int 0 10) (Random.int 0 10)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
