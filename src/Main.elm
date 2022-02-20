@@ -27,7 +27,7 @@ highInt =
 
 nbrExercises : Int
 nbrExercises =
-    5
+    7
 
 
 subscriptions : Model -> Sub msg
@@ -41,12 +41,13 @@ initialModel =
         stats =
             { multiplication = []
             , missingEntryInMultiplication = []
+            , missingEntriesInTable = []
             , currentCount = 0
             }
     in
     { stats = stats
     , exercise = NoExerciseSelected
-    , currentGuess = NoGuessYet
+    , currentGuess = Guess []
     , feedback = NoFeedback
     }
 
@@ -59,6 +60,7 @@ type alias Try =
 type alias Stats =
     { multiplication : List Try
     , missingEntryInMultiplication : List Try
+    , missingEntriesInTable : List Try
     , currentCount : Int
     }
 
@@ -67,11 +69,11 @@ type Exercises
     = NoExerciseSelected
     | CurrentMultiplication Int Int
     | MissingEntryInMultiplication Int Int
+    | MissingEntriesInTable Int Int Int
 
 
 type Guessing
-    = NoGuessYet
-    | Guess String
+    = Guess (List String)
 
 
 type Feedback
@@ -91,8 +93,9 @@ type alias Model =
 type Msg
     = AnotherMultiplication
     | AnotherMissingEntryInMultiplication
-    | NewExercise Exercises
-    | TypedInto String
+    | AnotherMissingEntriesInTable
+    | NewExercise Guessing Exercises
+    | TypedInto Int String
     | KeyDown Int
 
 
@@ -101,8 +104,11 @@ nextMultiplication =
     let
         mkExer =
             \a b -> CurrentMultiplication a b
+
+        initialGuess =
+            Guess [ "" ]
     in
-    Random.generate NewExercise <| Random.map2 mkExer (Random.int 0 highInt) (Random.int 0 highInt)
+    Random.generate (NewExercise initialGuess) <| Random.map2 mkExer (Random.int 0 highInt) (Random.int 0 highInt)
 
 
 nextMissingEntryInMultiplication : Cmd Msg
@@ -110,8 +116,28 @@ nextMissingEntryInMultiplication =
     let
         mkExer =
             \a b -> MissingEntryInMultiplication a (a * b)
+
+        initialGuess =
+            Guess [ "" ]
     in
-    Random.generate NewExercise <| Random.map2 mkExer (Random.int 0 highInt) (Random.int 0 highInt)
+    Random.generate (NewExercise initialGuess) <| Random.map2 mkExer (Random.int 0 highInt) (Random.int 0 highInt)
+
+
+nextMissingEntriesInTable : Cmd Msg
+nextMissingEntriesInTable =
+    let
+        mkExer =
+            \table index1 index2 ->
+                if index1 == index2 then
+                    MissingEntriesInTable table index1 (modBy (index2 + 1) 10)
+
+                else
+                    MissingEntriesInTable table index1 index2
+
+        initialGuess =
+            Guess [ "", "" ]
+    in
+    Random.generate (NewExercise initialGuess) <| Random.map3 mkExer (Random.int 0 highInt) (Random.int 0 10) (Random.int 0 10)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -123,27 +149,45 @@ update msg model =
         ( AnotherMissingEntryInMultiplication, _ ) ->
             ( model, nextMissingEntryInMultiplication )
 
-        ( NewExercise newExercise, _ ) ->
+        ( AnotherMissingEntriesInTable, _ ) ->
+            ( model, nextMissingEntriesInTable )
+
+        ( NewExercise initialGuess newExercise, _ ) ->
             let
                 stats =
                     model.stats
 
-                ( count, exer ) =
+                ( count, exer, guess ) =
                     if stats.currentCount < nbrExercises then
-                        ( stats.currentCount + 1, newExercise )
+                        ( stats.currentCount + 1, newExercise, initialGuess )
 
                     else
-                        ( 0, NoExerciseSelected )
+                        ( 0, NoExerciseSelected, Guess [] )
 
                 s =
                     { stats | currentCount = count }
             in
-            ( { model | exercise = exer, stats = s, feedback = NoFeedback, currentGuess = NoGuessYet }, Cmd.none )
+            ( { model | exercise = exer, stats = s, feedback = NoFeedback, currentGuess = guess }, Cmd.none )
 
-        ( TypedInto txt, _ ) ->
+        ( TypedInto idx txt, _ ) ->
             let
+                guessList =
+                    case model.currentGuess of
+                        Guess [] ->
+                            []
+
+                        Guess (_ :: []) ->
+                            [ txt ]
+
+                        Guess (a :: b :: _) ->
+                            if idx == 0 then
+                                [ txt, b ]
+
+                            else
+                                [ a, txt ]
+
                 m =
-                    { model | currentGuess = Guess txt }
+                    { model | currentGuess = Guess guessList }
             in
             ( m, Cmd.none )
 
@@ -180,52 +224,92 @@ updateModelWithGuess answerIsRight getTries setTries model =
 executeCurrentGuess : Model -> ( Model, Cmd Msg )
 executeCurrentGuess model =
     let
-        g =
+        guesses =
             case model.currentGuess of
-                NoGuessYet ->
-                    Nothing
-
-                Guess n ->
-                    String.toInt n
+                Guess l ->
+                    List.map (\s -> String.toInt s) l
     in
-    case g of
-        Nothing ->
+    case model.exercise of
+        NoExerciseSelected ->
+            ( model, Cmd.none )
+
+        CurrentMultiplication a b ->
             let
                 m =
-                    { model | feedback = Error "Please make a proper guess!" }
+                    case guesses of
+                        [] ->
+                            model
+
+                        (Just g1) :: _ ->
+                            let
+                                ok =
+                                    g1 == a * b
+                            in
+                            updateModelWithGuess ok .multiplication (\s l -> { s | multiplication = l }) model
+
+                        Nothing :: _ ->
+                            { model | feedback = Error "Come on - please make a proper guess!" }
+
+                next =
+                    delay 1000 AnotherMultiplication
             in
-            ( m, Cmd.none )
+            ( m, next )
 
-        Just guess ->
-            case model.exercise of
-                NoExerciseSelected ->
-                    ( model, Cmd.none )
+        MissingEntryInMultiplication a result ->
+            let
+                m =
+                    case guesses of
+                        [] ->
+                            model
 
-                CurrentMultiplication a b ->
-                    let
-                        m =
-                            updateModelWithGuess (guess == a * b) .multiplication (\s l -> { s | multiplication = l }) model
+                        (Just g1) :: _ ->
+                            let
+                                ok =
+                                    a * g1 == result
 
-                        next =
-                            delay 1000 AnotherMultiplication
-                    in
-                    ( m, next )
+                                upd =
+                                    \s l -> { s | missingEntryInMultiplication = l }
+                            in
+                            updateModelWithGuess ok .missingEntryInMultiplication upd model
 
-                MissingEntryInMultiplication a result ->
-                    let
-                        isRight =
-                            a * guess == result
+                        Nothing :: _ ->
+                            { model | feedback = Error "Come on - please make a proper guess!" }
 
-                        upd =
-                            \s l -> { s | missingEntryInMultiplication = l }
+                next =
+                    delay 1000 AnotherMissingEntryInMultiplication
+            in
+            ( m, next )
 
-                        m =
-                            updateModelWithGuess isRight .missingEntryInMultiplication upd model
+        MissingEntriesInTable table idx1 idx2 ->
+            let
+                m =
+                    case guesses of
+                        Nothing :: _ ->
+                            { model | feedback = Error "Come on - please make a proper guess!" }
 
-                        next =
-                            delay 1000 AnotherMissingEntryInMultiplication
-                    in
-                    ( m, next )
+                        _ :: Nothing :: _ ->
+                            { model | feedback = Error "Come on - please make a proper guess!" }
+
+                        (Just guess1) :: (Just guess2) :: _ ->
+                            let
+                                ok1 =
+                                    table * idx1 == guess1
+
+                                ok2 =
+                                    table * idx2 == guess2
+
+                                upd =
+                                    \s l -> { s | missingEntriesInTable = l }
+                            in
+                            updateModelWithGuess (ok1 && ok2) .missingEntriesInTable upd model
+
+                        _ ->
+                            model
+
+                next =
+                    delay 1000 AnotherMissingEntriesInTable
+            in
+            ( m, next )
 
 
 delay : Float -> msg -> Cmd msg
@@ -243,6 +327,7 @@ renderExercise e g =
                 [ p [] [ text "Vælg opgavetype : " ]
                 , p [] [ button [ onClick AnotherMultiplication ] [ text "3 * 7 = ???" ] ]
                 , p [] [ button [ onClick AnotherMissingEntryInMultiplication ] [ text "3 * ?? = 12" ] ]
+                , p [] [ button [ onClick AnotherMissingEntriesInTable ] [ text "2 ?? 6 8 ..." ] ]
                 ]
 
         CurrentMultiplication a b ->
@@ -252,15 +337,15 @@ renderExercise e g =
 
                 v =
                     case g of
-                        NoGuessYet ->
+                        Guess [] ->
                             ""
 
-                        Guess s ->
+                        Guess (s :: _) ->
                             s
             in
             div []
                 [ span [] [ text question ]
-                , input [ onKeyDown KeyDown, onInput TypedInto, value v ] []
+                , input [ onKeyDown KeyDown, onInput (TypedInto 0), value v ] []
                 ]
 
         MissingEntryInMultiplication a result ->
@@ -273,19 +358,45 @@ renderExercise e g =
 
                 v =
                     case g of
-                        NoGuessYet ->
+                        Guess [] ->
                             ""
 
-                        Guess s ->
+                        Guess (s :: _) ->
                             s
             in
             div []
                 [ span []
                     [ text question1
-                    , input [ onKeyDown KeyDown, onInput TypedInto, value v ] []
+                    , input [ onKeyDown KeyDown, onInput (TypedInto 0), value v ] []
                     , text question2
                     ]
                 ]
+
+        MissingEntriesInTable table idx1 idx2 ->
+            let
+                ( guess1, guess2 ) =
+                    case g of
+                        Guess [] ->
+                            ( "", "" )
+
+                        Guess (s :: []) ->
+                            ( s, "" )
+
+                        Guess (s :: b :: _) ->
+                            ( s, b )
+
+                renderRange =
+                    \i ->
+                        if i == idx1 then
+                            span [] [ input [ onKeyDown KeyDown, onInput (TypedInto 0), value guess1 ] [] ]
+
+                        else if i == idx2 then
+                            span [] [ input [ onKeyDown KeyDown, onInput (TypedInto 1), value guess2 ] [] ]
+
+                        else
+                            span [] [ text <| " " ++ String.fromInt (table * i) ++ " " ]
+            in
+            p [] <| List.map renderRange (List.range 0 10)
 
 
 renderFeedback : Feedback -> Html Msg
@@ -331,10 +442,17 @@ renderStats s =
 
         mis_mul_all =
             s.missingEntryInMultiplication |> List.length |> String.fromInt
+
+        table =
+            fetchRights s.missingEntriesInTable
+
+        table_all =
+            s.missingEntriesInTable |> List.length |> String.fromInt
     in
     p []
         [ p [] [ text <| "you have " ++ mul ++ " rights out of " ++ mul_all ++ " multiplications" ]
         , p [] [ text <| "you have " ++ mis_mul ++ " rights out of " ++ mis_mul_all ++ " missing in multiplications" ]
+        , p [] [ text <| "you have " ++ table ++ " table fixes of " ++ table_all ++ " table fixes trys" ]
         ]
 
 
@@ -352,8 +470,8 @@ view model =
     in
     div []
         [ e
-        , s
         , div [] [ f ]
+        , s
         ]
 
 

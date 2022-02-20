@@ -10596,21 +10596,26 @@ var $elm$core$Basics$never = function (_v0) {
 	}
 };
 var $elm$browser$Browser$element = _Browser_element;
+var $author$project$Main$Guess = function (a) {
+	return {$: 'Guess', a: a};
+};
 var $author$project$Main$NoExerciseSelected = {$: 'NoExerciseSelected'};
 var $author$project$Main$NoFeedback = {$: 'NoFeedback'};
-var $author$project$Main$NoGuessYet = {$: 'NoGuessYet'};
 var $author$project$Main$initialModel = function () {
-	var stats = {currentCount: 0, missingEntryInMultiplication: _List_Nil, multiplication: _List_Nil};
-	return {currentGuess: $author$project$Main$NoGuessYet, exercise: $author$project$Main$NoExerciseSelected, feedback: $author$project$Main$NoFeedback, stats: stats};
+	var stats = {currentCount: 0, missingEntriesInTable: _List_Nil, missingEntryInMultiplication: _List_Nil, multiplication: _List_Nil};
+	return {
+		currentGuess: $author$project$Main$Guess(_List_Nil),
+		exercise: $author$project$Main$NoExerciseSelected,
+		feedback: $author$project$Main$NoFeedback,
+		stats: stats
+	};
 }();
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$none;
 };
-var $author$project$Main$Guess = function (a) {
-	return {$: 'Guess', a: a};
-};
+var $author$project$Main$AnotherMissingEntriesInTable = {$: 'AnotherMissingEntriesInTable'};
 var $author$project$Main$AnotherMissingEntryInMultiplication = {$: 'AnotherMissingEntryInMultiplication'};
 var $author$project$Main$AnotherMultiplication = {$: 'AnotherMultiplication'};
 var $author$project$Main$Error = function (a) {
@@ -10645,77 +10650,160 @@ var $author$project$Main$updateModelWithGuess = F4(
 			{feedback: feedback, stats: stats});
 	});
 var $author$project$Main$executeCurrentGuess = function (model) {
-	var g = function () {
-		var _v2 = model.currentGuess;
-		if (_v2.$ === 'NoGuessYet') {
-			return $elm$core$Maybe$Nothing;
-		} else {
-			var n = _v2.a;
-			return $elm$core$String$toInt(n);
-		}
+	var guesses = function () {
+		var _v10 = model.currentGuess;
+		var l = _v10.a;
+		return A2(
+			$elm$core$List$map,
+			function (s) {
+				return $elm$core$String$toInt(s);
+			},
+			l);
 	}();
-	if (g.$ === 'Nothing') {
-		var m = _Utils_update(
-			model,
-			{
-				feedback: $author$project$Main$Error('Please make a proper guess!')
-			});
-		return _Utils_Tuple2(m, $elm$core$Platform$Cmd$none);
-	} else {
-		var guess = g.a;
-		var _v1 = model.exercise;
-		switch (_v1.$) {
-			case 'NoExerciseSelected':
-				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
-			case 'CurrentMultiplication':
-				var a = _v1.a;
-				var b = _v1.b;
-				var next = A2($author$project$Main$delay, 1000, $author$project$Main$AnotherMultiplication);
-				var m = A4(
-					$author$project$Main$updateModelWithGuess,
-					_Utils_eq(guess, a * b),
-					function ($) {
-						return $.multiplication;
-					},
-					F2(
-						function (s, l) {
-							return _Utils_update(
-								s,
-								{multiplication: l});
-						}),
-					model);
-				return _Utils_Tuple2(m, next);
-			default:
-				var a = _v1.a;
-				var result = _v1.b;
-				var upd = F2(
-					function (s, l) {
+	var _v0 = model.exercise;
+	switch (_v0.$) {
+		case 'NoExerciseSelected':
+			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+		case 'CurrentMultiplication':
+			var a = _v0.a;
+			var b = _v0.b;
+			var next = A2($author$project$Main$delay, 1000, $author$project$Main$AnotherMultiplication);
+			var m = function () {
+				if (!guesses.b) {
+					return model;
+				} else {
+					if (guesses.a.$ === 'Just') {
+						var g1 = guesses.a.a;
+						var ok = _Utils_eq(g1, a * b);
+						return A4(
+							$author$project$Main$updateModelWithGuess,
+							ok,
+							function ($) {
+								return $.multiplication;
+							},
+							F2(
+								function (s, l) {
+									return _Utils_update(
+										s,
+										{multiplication: l});
+								}),
+							model);
+					} else {
+						var _v2 = guesses.a;
 						return _Utils_update(
-							s,
-							{missingEntryInMultiplication: l});
-					});
-				var next = A2($author$project$Main$delay, 1000, $author$project$Main$AnotherMissingEntryInMultiplication);
-				var isRight = _Utils_eq(a * guess, result);
-				var m = A4(
-					$author$project$Main$updateModelWithGuess,
-					isRight,
-					function ($) {
-						return $.missingEntryInMultiplication;
-					},
-					upd,
-					model);
-				return _Utils_Tuple2(m, next);
-		}
+							model,
+							{
+								feedback: $author$project$Main$Error('Come on - please make a proper guess!')
+							});
+					}
+				}
+			}();
+			return _Utils_Tuple2(m, next);
+		case 'MissingEntryInMultiplication':
+			var a = _v0.a;
+			var result = _v0.b;
+			var next = A2($author$project$Main$delay, 1000, $author$project$Main$AnotherMissingEntryInMultiplication);
+			var m = function () {
+				if (!guesses.b) {
+					return model;
+				} else {
+					if (guesses.a.$ === 'Just') {
+						var g1 = guesses.a.a;
+						var upd = F2(
+							function (s, l) {
+								return _Utils_update(
+									s,
+									{missingEntryInMultiplication: l});
+							});
+						var ok = _Utils_eq(a * g1, result);
+						return A4(
+							$author$project$Main$updateModelWithGuess,
+							ok,
+							function ($) {
+								return $.missingEntryInMultiplication;
+							},
+							upd,
+							model);
+					} else {
+						var _v4 = guesses.a;
+						return _Utils_update(
+							model,
+							{
+								feedback: $author$project$Main$Error('Come on - please make a proper guess!')
+							});
+					}
+				}
+			}();
+			return _Utils_Tuple2(m, next);
+		default:
+			var table = _v0.a;
+			var idx1 = _v0.b;
+			var idx2 = _v0.c;
+			var next = A2($author$project$Main$delay, 1000, $author$project$Main$AnotherMissingEntriesInTable);
+			var m = function () {
+				_v5$3:
+				while (true) {
+					if (guesses.b) {
+						if (guesses.a.$ === 'Nothing') {
+							var _v6 = guesses.a;
+							return _Utils_update(
+								model,
+								{
+									feedback: $author$project$Main$Error('Come on - please make a proper guess!')
+								});
+						} else {
+							if (guesses.b.b) {
+								if (guesses.b.a.$ === 'Nothing') {
+									var _v7 = guesses.b;
+									var _v8 = _v7.a;
+									return _Utils_update(
+										model,
+										{
+											feedback: $author$project$Main$Error('Come on - please make a proper guess!')
+										});
+								} else {
+									var guess1 = guesses.a.a;
+									var _v9 = guesses.b;
+									var guess2 = _v9.a.a;
+									var upd = F2(
+										function (s, l) {
+											return _Utils_update(
+												s,
+												{missingEntriesInTable: l});
+										});
+									var ok2 = _Utils_eq(table * idx2, guess2);
+									var ok1 = _Utils_eq(table * idx1, guess1);
+									return A4(
+										$author$project$Main$updateModelWithGuess,
+										ok1 && ok2,
+										function ($) {
+											return $.missingEntriesInTable;
+										},
+										upd,
+										model);
+								}
+							} else {
+								break _v5$3;
+							}
+						}
+					} else {
+						break _v5$3;
+					}
+				}
+				return model;
+			}();
+			return _Utils_Tuple2(m, next);
 	}
 };
-var $author$project$Main$nbrExercises = 5;
-var $author$project$Main$MissingEntryInMultiplication = F2(
-	function (a, b) {
-		return {$: 'MissingEntryInMultiplication', a: a, b: b};
+var $author$project$Main$nbrExercises = 7;
+var $author$project$Main$MissingEntriesInTable = F3(
+	function (a, b, c) {
+		return {$: 'MissingEntriesInTable', a: a, b: b, c: c};
 	});
-var $author$project$Main$NewExercise = function (a) {
-	return {$: 'NewExercise', a: a};
-};
+var $author$project$Main$NewExercise = F2(
+	function (a, b) {
+		return {$: 'NewExercise', a: a, b: b};
+	});
 var $elm$random$Random$Generate = function (a) {
 	return {$: 'Generate', a: a};
 };
@@ -10861,6 +10949,54 @@ var $elm$random$Random$int = F2(
 				}
 			});
 	});
+var $elm$random$Random$map3 = F4(
+	function (func, _v0, _v1, _v2) {
+		var genA = _v0.a;
+		var genB = _v1.a;
+		var genC = _v2.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v3 = genA(seed0);
+				var a = _v3.a;
+				var seed1 = _v3.b;
+				var _v4 = genB(seed1);
+				var b = _v4.a;
+				var seed2 = _v4.b;
+				var _v5 = genC(seed2);
+				var c = _v5.a;
+				var seed3 = _v5.b;
+				return _Utils_Tuple2(
+					A3(func, a, b, c),
+					seed3);
+			});
+	});
+var $elm$core$Basics$modBy = _Basics_modBy;
+var $author$project$Main$nextMissingEntriesInTable = function () {
+	var mkExer = F3(
+		function (table, index1, index2) {
+			return _Utils_eq(index1, index2) ? A3(
+				$author$project$Main$MissingEntriesInTable,
+				table,
+				index1,
+				A2($elm$core$Basics$modBy, index2 + 1, 10)) : A3($author$project$Main$MissingEntriesInTable, table, index1, index2);
+		});
+	var initialGuess = $author$project$Main$Guess(
+		_List_fromArray(
+			['', '']));
+	return A2(
+		$elm$random$Random$generate,
+		$author$project$Main$NewExercise(initialGuess),
+		A4(
+			$elm$random$Random$map3,
+			mkExer,
+			A2($elm$random$Random$int, 0, $author$project$Main$highInt),
+			A2($elm$random$Random$int, 0, 10),
+			A2($elm$random$Random$int, 0, 10)));
+}();
+var $author$project$Main$MissingEntryInMultiplication = F2(
+	function (a, b) {
+		return {$: 'MissingEntryInMultiplication', a: a, b: b};
+	});
 var $elm$random$Random$map2 = F3(
 	function (func, _v0, _v1) {
 		var genA = _v0.a;
@@ -10883,9 +11019,12 @@ var $author$project$Main$nextMissingEntryInMultiplication = function () {
 		function (a, b) {
 			return A2($author$project$Main$MissingEntryInMultiplication, a, a * b);
 		});
+	var initialGuess = $author$project$Main$Guess(
+		_List_fromArray(
+			['']));
 	return A2(
 		$elm$random$Random$generate,
-		$author$project$Main$NewExercise,
+		$author$project$Main$NewExercise(initialGuess),
 		A3(
 			$elm$random$Random$map2,
 			mkExer,
@@ -10901,9 +11040,12 @@ var $author$project$Main$nextMultiplication = function () {
 		function (a, b) {
 			return A2($author$project$Main$CurrentMultiplication, a, b);
 		});
+	var initialGuess = $author$project$Main$Guess(
+		_List_fromArray(
+			['']));
 	return A2(
 		$elm$random$Random$generate,
-		$author$project$Main$NewExercise,
+		$author$project$Main$NewExercise(initialGuess),
 		A3(
 			$elm$random$Random$map2,
 			mkExer,
@@ -10920,26 +11062,57 @@ var $author$project$Main$update = F2(
 			case 'AnotherMissingEntryInMultiplication':
 				var _v2 = _v0.a;
 				return _Utils_Tuple2(model, $author$project$Main$nextMissingEntryInMultiplication);
+			case 'AnotherMissingEntriesInTable':
+				var _v3 = _v0.a;
+				return _Utils_Tuple2(model, $author$project$Main$nextMissingEntriesInTable);
 			case 'NewExercise':
-				var newExercise = _v0.a.a;
+				var _v4 = _v0.a;
+				var initialGuess = _v4.a;
+				var newExercise = _v4.b;
 				var stats = model.stats;
-				var _v3 = (_Utils_cmp(stats.currentCount, $author$project$Main$nbrExercises) < 0) ? _Utils_Tuple2(stats.currentCount + 1, newExercise) : _Utils_Tuple2(0, $author$project$Main$NoExerciseSelected);
-				var count = _v3.a;
-				var exer = _v3.b;
+				var _v5 = (_Utils_cmp(stats.currentCount, $author$project$Main$nbrExercises) < 0) ? _Utils_Tuple3(stats.currentCount + 1, newExercise, initialGuess) : _Utils_Tuple3(
+					0,
+					$author$project$Main$NoExerciseSelected,
+					$author$project$Main$Guess(_List_Nil));
+				var count = _v5.a;
+				var exer = _v5.b;
+				var guess = _v5.c;
 				var s = _Utils_update(
 					stats,
 					{currentCount: count});
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{currentGuess: $author$project$Main$NoGuessYet, exercise: exer, feedback: $author$project$Main$NoFeedback, stats: s}),
+						{currentGuess: guess, exercise: exer, feedback: $author$project$Main$NoFeedback, stats: s}),
 					$elm$core$Platform$Cmd$none);
 			case 'TypedInto':
-				var txt = _v0.a.a;
+				var _v6 = _v0.a;
+				var idx = _v6.a;
+				var txt = _v6.b;
+				var guessList = function () {
+					var _v7 = model.currentGuess;
+					if (!_v7.a.b) {
+						return _List_Nil;
+					} else {
+						if (!_v7.a.b.b) {
+							var _v8 = _v7.a;
+							return _List_fromArray(
+								[txt]);
+						} else {
+							var _v9 = _v7.a;
+							var a = _v9.a;
+							var _v10 = _v9.b;
+							var b = _v10.a;
+							return (!idx) ? _List_fromArray(
+								[txt, b]) : _List_fromArray(
+								[a, txt]);
+						}
+					}
+				}();
 				var m = _Utils_update(
 					model,
 					{
-						currentGuess: $author$project$Main$Guess(txt)
+						currentGuess: $author$project$Main$Guess(guessList)
 					});
 				return _Utils_Tuple2(m, $elm$core$Platform$Cmd$none);
 			default:
@@ -10950,9 +11123,10 @@ var $author$project$Main$update = F2(
 var $author$project$Main$KeyDown = function (a) {
 	return {$: 'KeyDown', a: a};
 };
-var $author$project$Main$TypedInto = function (a) {
-	return {$: 'TypedInto', a: a};
-};
+var $author$project$Main$TypedInto = F2(
+	function (a, b) {
+		return {$: 'TypedInto', a: a, b: b};
+	});
 var $elm$html$Html$Events$keyCode = A2($elm$json$Json$Decode$field, 'keyCode', $elm$json$Json$Decode$int);
 var $author$project$Main$onKeyDown = function (tagger) {
 	return A2(
@@ -11007,16 +11181,33 @@ var $author$project$Main$renderExercise = F2(
 										[
 											$elm$html$Html$text('3 * ?? = 12')
 										]))
+								])),
+							A2(
+							$elm$html$Html$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Events$onClick($author$project$Main$AnotherMissingEntriesInTable)
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('2 ?? 6 8 ...')
+										]))
 								]))
 						]));
 			case 'CurrentMultiplication':
 				var a = e.a;
 				var b = e.b;
 				var v = function () {
-					if (g.$ === 'NoGuessYet') {
+					if (!g.a.b) {
 						return '';
 					} else {
-						var s = g.a;
+						var _v2 = g.a;
+						var s = _v2.a;
 						return s;
 					}
 				}();
@@ -11038,19 +11229,21 @@ var $author$project$Main$renderExercise = F2(
 							_List_fromArray(
 								[
 									$author$project$Main$onKeyDown($author$project$Main$KeyDown),
-									$elm$html$Html$Events$onInput($author$project$Main$TypedInto),
+									$elm$html$Html$Events$onInput(
+									$author$project$Main$TypedInto(0)),
 									$elm$html$Html$Attributes$value(v)
 								]),
 							_List_Nil)
 						]));
-			default:
+			case 'MissingEntryInMultiplication':
 				var a = e.a;
 				var result = e.b;
 				var v = function () {
-					if (g.$ === 'NoGuessYet') {
+					if (!g.a.b) {
 						return '';
 					} else {
-						var s = g.a;
+						var _v4 = g.a;
+						var s = _v4.a;
 						return s;
 					}
 				}();
@@ -11072,13 +11265,84 @@ var $author$project$Main$renderExercise = F2(
 									_List_fromArray(
 										[
 											$author$project$Main$onKeyDown($author$project$Main$KeyDown),
-											$elm$html$Html$Events$onInput($author$project$Main$TypedInto),
+											$elm$html$Html$Events$onInput(
+											$author$project$Main$TypedInto(0)),
 											$elm$html$Html$Attributes$value(v)
 										]),
 									_List_Nil),
 									$elm$html$Html$text(question2)
 								]))
 						]));
+			default:
+				var table = e.a;
+				var idx1 = e.b;
+				var idx2 = e.c;
+				var _v5 = function () {
+					if (!g.a.b) {
+						return _Utils_Tuple2('', '');
+					} else {
+						if (!g.a.b.b) {
+							var _v7 = g.a;
+							var s = _v7.a;
+							return _Utils_Tuple2(s, '');
+						} else {
+							var _v8 = g.a;
+							var s = _v8.a;
+							var _v9 = _v8.b;
+							var b = _v9.a;
+							return _Utils_Tuple2(s, b);
+						}
+					}
+				}();
+				var guess1 = _v5.a;
+				var guess2 = _v5.b;
+				var renderRange = function (i) {
+					return _Utils_eq(i, idx1) ? A2(
+						$elm$html$Html$span,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$author$project$Main$onKeyDown($author$project$Main$KeyDown),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$TypedInto(0)),
+										$elm$html$Html$Attributes$value(guess1)
+									]),
+								_List_Nil)
+							])) : (_Utils_eq(i, idx2) ? A2(
+						$elm$html$Html$span,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$input,
+								_List_fromArray(
+									[
+										$author$project$Main$onKeyDown($author$project$Main$KeyDown),
+										$elm$html$Html$Events$onInput(
+										$author$project$Main$TypedInto(1)),
+										$elm$html$Html$Attributes$value(guess2)
+									]),
+								_List_Nil)
+							])) : A2(
+						$elm$html$Html$span,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								' ' + ($elm$core$String$fromInt(table * i) + ' '))
+							])));
+				};
+				return A2(
+					$elm$html$Html$p,
+					_List_Nil,
+					A2(
+						$elm$core$List$map,
+						renderRange,
+						A2($elm$core$List$range, 0, 10)));
 		}
 	});
 var $author$project$Main$renderFeedback = function (feedback) {
@@ -11106,6 +11370,8 @@ var $author$project$Main$renderFeedback = function (feedback) {
 	}
 };
 var $author$project$Main$renderStats = function (s) {
+	var table_all = $elm$core$String$fromInt(
+		$elm$core$List$length(s.missingEntriesInTable));
 	var mul_all = $elm$core$String$fromInt(
 		$elm$core$List$length(s.multiplication));
 	var mis_mul_all = $elm$core$String$fromInt(
@@ -11124,6 +11390,7 @@ var $author$project$Main$renderStats = function (s) {
 	};
 	var mis_mul = fetchRights(s.missingEntryInMultiplication);
 	var mul = fetchRights(s.multiplication);
+	var table = fetchRights(s.missingEntriesInTable);
 	return A2(
 		$elm$html$Html$p,
 		_List_Nil,
@@ -11142,6 +11409,13 @@ var $author$project$Main$renderStats = function (s) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text('you have ' + (mis_mul + (' rights out of ' + (mis_mul_all + ' missing in multiplications'))))
+					])),
+				A2(
+				$elm$html$Html$p,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text('you have ' + (table + (' table fixes of ' + (table_all + ' table fixes trys'))))
 					]))
 			]));
 };
@@ -11155,12 +11429,12 @@ var $author$project$Main$view = function (model) {
 		_List_fromArray(
 			[
 				e,
-				s,
 				A2(
 				$elm$html$Html$div,
 				_List_Nil,
 				_List_fromArray(
-					[f]))
+					[f])),
+				s
 			]));
 };
 var $author$project$Main$main = $elm$browser$Browser$element(
@@ -11173,7 +11447,7 @@ var $author$project$Main$main = $elm$browser$Browser$element(
 		view: $author$project$Main$view
 	});
 _Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{},"unions":{"Main.Msg":{"args":[],"tags":{"AnotherMultiplication":[],"AnotherMissingEntryInMultiplication":[],"NewExercise":["Main.Exercises"],"TypedInto":["String.String"],"KeyDown":["Basics.Int"]}},"Main.Exercises":{"args":[],"tags":{"NoExerciseSelected":[],"CurrentMultiplication":["Basics.Int","Basics.Int"],"MissingEntryInMultiplication":["Basics.Int","Basics.Int"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"String.String":{"args":[],"tags":{"String":[]}}}}})}});}(this));
+	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Main.Msg","aliases":{},"unions":{"Main.Msg":{"args":[],"tags":{"AnotherMultiplication":[],"AnotherMissingEntryInMultiplication":[],"AnotherMissingEntriesInTable":[],"NewExercise":["Main.Guessing","Main.Exercises"],"TypedInto":["Basics.Int","String.String"],"KeyDown":["Basics.Int"]}},"Main.Exercises":{"args":[],"tags":{"NoExerciseSelected":[],"CurrentMultiplication":["Basics.Int","Basics.Int"],"MissingEntryInMultiplication":["Basics.Int","Basics.Int"],"MissingEntriesInTable":["Basics.Int","Basics.Int","Basics.Int"]}},"Main.Guessing":{"args":[],"tags":{"Guess":["List.List String.String"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"String.String":{"args":[],"tags":{"String":[]}},"List.List":{"args":["a"],"tags":{}}}}})}});}(this));
 
   var app = Elm.Main.init({ node: document.getElementById("elm") });
 }
